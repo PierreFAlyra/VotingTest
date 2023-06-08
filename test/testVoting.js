@@ -37,9 +37,25 @@ contract("Voting", accounts => {
     });
   });
 
+  describe("Getters access", function () {
+    describe("Get Voter", async function () {
+      it("Should revert with right error if not called from a voter", async function () {
+        await expectRevert(votingInstance.getVoter(_owner, {from: _owner}),
+                           "You're not a voter");
+      });
+    });
+
+    describe("Get one proposal", async function () {
+      it("Should revert with right error if not called from a voter", async function () {
+        await expectRevert(votingInstance.getOneProposal(new BN(0), {from: _owner}),
+                           "You're not a voter");
+      });
+    });
+  });
+
   describe("AddVoter", function () {
     describe("Validations", function () {
-      it("Should revert with right error if called not form the owner", async function () {
+      it("Should revert with right error if not called from the owner", async function () {
         await expectRevert(votingInstance.addVoter(_voter, {from: _voter}),
                            "Ownable: caller is not the owner");
       });
@@ -119,7 +135,7 @@ contract("Voting", accounts => {
 
   describe("AddProposal", function () {
     describe("Validations", function () {
-      it("Should revert with right error if called not form a voter", async function () {
+      it("Should revert with right error if not called from a voter", async function () {
         await votingInstance.addVoter(_voter);
         await expectRevert(votingInstance.addProposal("", {from: _owner}),
                            "You're not a voter");
@@ -212,7 +228,7 @@ contract("Voting", accounts => {
 
   describe("setVote", function () {
     describe("Validations", function () {
-      it("Should revert with right error if called not form a voter", async function () {
+      it("Should revert with right error if not called from a voter", async function () {
         await votingInstance.addVoter(_voter);
         await votingInstance.startProposalsRegistering();
         await votingInstance.endProposalsRegistering();
@@ -354,9 +370,259 @@ contract("Voting", accounts => {
     });
   });
 
+  describe("Start proposals Registering", function () {
+    describe("Validations", function () {
+
+      it("Should revert with right error if not called from the owner", async function () {
+        await expectRevert(votingInstance.startProposalsRegistering({from: _voter}),
+                           "Ownable: caller is not the owner");
+      });
+
+      describe("State", async function () {
+        it("Should revert with right error if called from \"ProposalsRegistrationStarted\"", async function () {
+          await votingInstance.startProposalsRegistering();
+          await expectRevert(votingInstance.startProposalsRegistering(),
+                             "Registering proposals cant be started now");
+        });
+
+        it("Should revert with right error if called from \"ProposalsRegistrationEnded\"", async function () {
+          await votingInstance.startProposalsRegistering();
+          await votingInstance.endProposalsRegistering();
+          await expectRevert(votingInstance.startProposalsRegistering(),
+                             "Registering proposals cant be started now");
+        });
+
+        it("Should revert with right error if called from \"VotingSessionStarted\"", async function () {
+          await votingInstance.startProposalsRegistering();
+          await votingInstance.endProposalsRegistering();
+          await votingInstance.startVotingSession();
+          await expectRevert(votingInstance.startProposalsRegistering(),
+                             "Registering proposals cant be started now");
+        });
+
+        it("Should revert with right error if called from \"VotingSessionEnded\"", async function () {
+          await votingInstance.startProposalsRegistering();
+          await votingInstance.endProposalsRegistering();
+          await votingInstance.startVotingSession();
+          await votingInstance.endVotingSession();
+          await expectRevert(votingInstance.startProposalsRegistering(),
+                             "Registering proposals cant be started now");
+        });
+
+        it("Should revert with right error if called from \"VotesTallied\"", async function () {
+          await votingInstance.startProposalsRegistering();
+          await votingInstance.endProposalsRegistering();
+          await votingInstance.startVotingSession();
+          await votingInstance.endVotingSession();
+          await votingInstance.tallyVotes();
+          await expectRevert(votingInstance.startProposalsRegistering(),
+                             "Registering proposals cant be started now");
+        });
+      });
+
+      it("Should ", async function () {
+        await votingInstance.addVoter(_voter);
+        await votingInstance.startProposalsRegistering();
+        const genesisProposalID = new BN(0);
+        const proposal = await votingInstance.getOneProposal(genesisProposalID, {from: _voter});
+        expect(proposal.description.toString()).to.equal("GENESIS");
+      });
+    });
+
+    describe("Events", function () {
+      it("Should emit an event: \"WorkflowStatusChange\"", async function () {
+        expectEvent(await votingInstance.startProposalsRegistering(),
+                    'WorkflowStatusChange',
+                    {previousStatus: new BN(0), newStatus: new BN(1)});
+      });
+    });
+  });
+
+  describe("End proposals Registering", function () {
+    describe("Validations", function () {
+
+      it("Should revert with right error if not called from the owner", async function () {
+        await expectRevert(votingInstance.endProposalsRegistering({from: _voter}),
+                           "Ownable: caller is not the owner");
+      });
+
+      describe("State", async function () {
+        it("Should revert with right error if called from \"RegisteringVoters\"", async function () {
+          await expectRevert(votingInstance.endProposalsRegistering(),
+                             "Registering proposals havent started yet");
+        });
+
+        it("Should revert with right error if called from \"ProposalsRegistrationEnded\"", async function () {
+          await votingInstance.startProposalsRegistering();
+          await votingInstance.endProposalsRegistering();
+          await expectRevert(votingInstance.endProposalsRegistering(),
+                             "Registering proposals havent started yet");
+        });
+
+        it("Should revert with right error if called from \"VotingSessionStarted\"", async function () {
+          await votingInstance.startProposalsRegistering();
+          await votingInstance.endProposalsRegistering();
+          await votingInstance.startVotingSession();
+          await expectRevert(votingInstance.endProposalsRegistering(),
+                             "Registering proposals havent started yet");
+        });
+
+        it("Should revert with right error if called from \"VotingSessionEnded\"", async function () {
+          await votingInstance.startProposalsRegistering();
+          await votingInstance.endProposalsRegistering();
+          await votingInstance.startVotingSession();
+          await votingInstance.endVotingSession();
+          await expectRevert(votingInstance.endProposalsRegistering(),
+                             "Registering proposals havent started yet");
+        });
+
+        it("Should revert with right error if called from \"VotesTallied\"", async function () {
+          await votingInstance.startProposalsRegistering();
+          await votingInstance.endProposalsRegistering();
+          await votingInstance.startVotingSession();
+          await votingInstance.endVotingSession();
+          await votingInstance.tallyVotes();
+          await expectRevert(votingInstance.endProposalsRegistering(),
+                             "Registering proposals havent started yet");
+        });
+      });
+    });
+    
+    describe("Events", function () {
+      it("Should emit an event: \"WorkflowStatusChange\"", async function () {
+        await votingInstance.startProposalsRegistering();
+        expectEvent(await votingInstance.endProposalsRegistering(),
+                    'WorkflowStatusChange',
+                    {previousStatus: new BN(1), newStatus: new BN(2)});
+      });
+    });
+  });
+
+  describe("Start voting session", function () {
+    describe("Validations", function () {
+
+      it("Should revert with right error if not called from the owner", async function () {
+        await expectRevert(votingInstance.startVotingSession({from: _voter}),
+                           "Ownable: caller is not the owner");
+
+      });
+
+      describe("State", async function () {
+        it("Should revert with right error if called from \"RegisteringVoters\"", async function () {
+          await expectRevert(votingInstance.startVotingSession(),
+                             "Registering proposals phase is not finished");
+        });
+
+        it("Should revert with right error if called from \"ProposalsRegistrationEnded\"", async function () {
+          await votingInstance.startProposalsRegistering();
+          await expectRevert(votingInstance.startVotingSession(),
+                             "Registering proposals phase is not finished");
+        });
+
+        it("Should revert with right error if called from \"VotingSessionStarted\"", async function () {
+          await votingInstance.startProposalsRegistering();
+          await votingInstance.endProposalsRegistering();
+          await votingInstance.startVotingSession();
+          await expectRevert(votingInstance.startVotingSession(),
+                             "Registering proposals phase is not finished");
+        });
+
+        it("Should revert with right error if called from \"VotingSessionEnded\"", async function () {
+          await votingInstance.startProposalsRegistering();
+          await votingInstance.endProposalsRegistering();
+          await votingInstance.startVotingSession();
+          await votingInstance.endVotingSession();
+          await expectRevert(votingInstance.startVotingSession(),
+                             "Registering proposals phase is not finished");
+        });
+
+        it("Should revert with right error if called from \"VotesTallied\"", async function () {
+          await votingInstance.startProposalsRegistering();
+          await votingInstance.endProposalsRegistering();
+          await votingInstance.startVotingSession();
+          await votingInstance.endVotingSession();
+          await votingInstance.tallyVotes();
+          await expectRevert(votingInstance.startVotingSession(),
+                             "Registering proposals phase is not finished");
+        });
+      });
+    });
+
+    describe("Events", function () {
+      it("Should emit an event: \"WorkflowStatusChange\"", async function () {
+        await votingInstance.startProposalsRegistering();
+        await votingInstance.endProposalsRegistering();
+        expectEvent(await votingInstance.startVotingSession(),
+                    'WorkflowStatusChange',
+                    {previousStatus: new BN(2), newStatus: new BN(3)});
+      });
+    });
+  });
+
+  describe("End voting session", function () {
+    describe("Validations", function () {
+
+      it("Should revert with right error if not called from the owner", async function () {
+        await expectRevert(votingInstance.endVotingSession({from: _voter}),
+                           "Ownable: caller is not the owner");
+        
+      });
+
+      describe("State", async function () {
+        it("Should revert with right error if called from \"RegisteringVoters\"", async function () {
+          await expectRevert(votingInstance.endVotingSession(),
+                             "Voting session havent started yet");
+        });
+
+        it("Should revert with right error if called from \"ProposalsRegistrationEnded\"", async function () {
+          await votingInstance.startProposalsRegistering();
+          await expectRevert(votingInstance.endVotingSession(),
+                             "Voting session havent started yet");
+        });
+
+        it("Should revert with right error if called from \"VotingSessionStarted\"", async function () {
+          await votingInstance.startProposalsRegistering();
+          await votingInstance.endProposalsRegistering();
+          await expectRevert(votingInstance.endVotingSession(),
+                             "Voting session havent started yet");
+        });
+
+        it("Should revert with right error if called from \"VotingSessionEnded\"", async function () {
+          await votingInstance.startProposalsRegistering();
+          await votingInstance.endProposalsRegistering();
+          await votingInstance.startVotingSession();
+          await votingInstance.endVotingSession();
+          await expectRevert(votingInstance.endVotingSession(),
+                             "Voting session havent started yet");
+        });
+
+        it("Should revert with right error if called from \"VotesTallied\"", async function () {
+          await votingInstance.startProposalsRegistering();
+          await votingInstance.endProposalsRegistering();
+          await votingInstance.startVotingSession();
+          await votingInstance.endVotingSession();
+          await votingInstance.tallyVotes();
+          await expectRevert(votingInstance.endVotingSession(),
+                             "Voting session havent started yet");
+        });
+      });
+    });
+
+    describe("Events", function () {
+      it("Should emit an event: \"WorkflowStatusChange\"", async function () {
+        await votingInstance.startProposalsRegistering();
+        await votingInstance.endProposalsRegistering();
+        await votingInstance.startVotingSession();
+        expectEvent(await votingInstance.endVotingSession(),
+                    'WorkflowStatusChange',
+                    {previousStatus: new BN(3), newStatus: new BN(4)});
+      });
+    });
+  });
+
   describe("Tally Votes", function () {
     describe("Validations", function () {
-      it("Should revert with right error if called not form the owner", async function () {
+      it("Should revert with right error if not called from the owner", async function () {
         await expectRevert(votingInstance.tallyVotes({from: _voter}),
                            "Ownable: caller is not the owner");
       });
@@ -384,8 +650,8 @@ contract("Voting", accounts => {
           await votingInstance.startProposalsRegistering();
           await votingInstance.endProposalsRegistering();
           await votingInstance.startVotingSession();
-          await expectRevert(votingInstance.addVoter(_voter),
-                             "Voters registration is not open yet");
+          await expectRevert(votingInstance.tallyVotes(),
+                             "Current status is not voting session ended");
         });
 
         it("Should revert with right error if called from \"VotesTallied\"", async function () {
@@ -468,5 +734,4 @@ contract("Voting", accounts => {
       });
     });
   });
-  
 });
