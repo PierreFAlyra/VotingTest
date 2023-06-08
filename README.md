@@ -46,8 +46,8 @@ Chaque fonction "public/external" est testé séparemment en suivant un template
 
 |  Solc version: 0.8.13+commit.abaa5c0e     |  Optimizer enabled: false  |  Runs: 200  |  Block limit: 6718946 gas  │
 |-------------------------------------------|----------------------------|-------------|----------------------------|
-|  Methods                                                                                                          │
-|             |                             |              |             |             |              |             |
+
+
 |  Contract   |  Method                     |  Min         |  Max        |  Avg        |  # calls     |  eur (avg)  │
 |-------------|-----------------------------|--------------|-------------|-------------|--------------|-------------|
 |  Voting     |   addProposal               |              |             |       59004 |           19 |             │
