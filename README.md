@@ -45,11 +45,11 @@ Chaque fonction "public/external" est testé séparemment en suivant un template
 
 
 |  Solc version: 0.8.13+commit.abaa5c0e     |  Optimizer enabled: false  |  Runs: 200  |  Block limit: 6718946 gas  │
-|                                           |                            |             |                            | 
+|-------------------------------------------|----------------------------|-------------|----------------------------|
 |  Methods                                                                                                          │
 |             |                             |              |             |             |              |             |
 |  Contract   |  Method                     |  Min         |  Max        |  Avg        |  # calls     |  eur (avg)  │
-|             |                             |              |             |             |              |             | 
+|-------------|-----------------------------|--------------|-------------|-------------|--------------|-------------|
 |  Voting     |   addProposal               |              |             |       59004 |           19 |             │
 |             |                             |              |             |             |              |             | 
 |  Voting     |   addVoter                  |              |             |       50220 |           42 |             │
@@ -78,7 +78,7 @@ Grace à hardhat-truffle5 le code coverage à pu être réalisé.
 
 
 |File         |  % Stmts | % Branch |  % Funcs |  % Lines |Uncovered Lines |
-|             |          |          |          |          |                |
+|-------------|----------|----------|----------|----------|----------------|
 | contracts/  |      100 |      100 |      100 |      100 |                |
 |  Lock.sol   |      100 |      100 |      100 |      100 |                |
 |  Voting.sol |      100 |      100 |      100 |      100 |                |
