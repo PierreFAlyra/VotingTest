@@ -7,11 +7,466 @@ contract("Voting", accounts => {
   let Voting = artifacts.require("Voting");
 
   const _owner = accounts[0];
+  const _voter = accounts[1];
+  const _otherVoter = accounts[2];
 
-  let VotingInstance;
-  
+  let votingInstance;
   beforeEach(async function() {
-    VotingInstance = await Voting.new({from: _owner});
+    votingInstance = await Voting.new({from: _owner});
+  });
+
+  describe("Deployement", function () {
+    describe("Constructor", function () {
+      it("Should set the right owner", async function () {
+        expect(await votingInstance.owner()).to.equal(_owner);
+      });
+    });
+
+    describe("Initalization", function () {
+      it("Should init workflowstatus to RegisteringVoters", async function () {
+        const workflowStatus = await votingInstance.workflowStatus();
+        const expected = new BN(0);
+        expect(workflowStatus.toString()).to.equal(expected.toString());
+      });
+
+      it("Should init winningProposalId to 0", async function () {
+        const winningProposalID = await votingInstance.winningProposalID();
+        const expected = new BN(0);
+        expect(winningProposalID.toString()).to.equal(expected.toString());
+      });
+    });
+  });
+
+  describe("AddVoter", function () {
+    describe("Validations", function () {
+      it("Should revert with right error if called not form the owner", async function () {
+        await expectRevert(votingInstance.addVoter(_voter, {from: _voter}),
+                           "Ownable: caller is not the owner");
+      });
+
+      // The only way to change workFlowStatus value... (Mock will be helpful)
+      describe("State", async function () {
+        it("Should revert with right error if called from \"ProposalsRegistrationStarted\"", async function () {
+          await votingInstance.startProposalsRegistering();
+          await expectRevert(votingInstance.addVoter(_voter),
+                             "Voters registration is not open yet");
+        });
+        
+        it("Should revert with right error if called from \"ProposalsRegistrationEnded\"", async function () {
+          await votingInstance.startProposalsRegistering();
+          await votingInstance.endProposalsRegistering();
+          await expectRevert(votingInstance.addVoter(_voter),
+                             "Voters registration is not open yet");
+        });
+
+        it("Should revert with right error if called from \"VotingSessionStarted\"", async function () {
+          await votingInstance.startProposalsRegistering();
+          await votingInstance.endProposalsRegistering();
+          await votingInstance.startVotingSession();
+          await expectRevert(votingInstance.addVoter(_voter),
+                             "Voters registration is not open yet");
+        });
+
+        it("Should revert with right error if called from \"VotingSessionEnded\"", async function () {
+          await votingInstance.startProposalsRegistering();
+          await votingInstance.endProposalsRegistering();
+          await votingInstance.startVotingSession();
+          await votingInstance.endVotingSession();
+          await expectRevert(votingInstance.addVoter(_voter),
+                             "Voters registration is not open yet");
+        });
+        
+        it("Should revert with right error if called from \"VotesTallied\"", async function () {
+          await votingInstance.startProposalsRegistering();
+          await votingInstance.endProposalsRegistering();
+          await votingInstance.startVotingSession();
+          await votingInstance.endVotingSession();
+          await votingInstance.tallyVotes();
+          await expectRevert(votingInstance.addVoter(_voter),
+                             "Voters registration is not open yet");
+        });
+      });
+
+      it("Should revert with right error if register multiple times from the same account", async function () {
+        await votingInstance.addVoter(_voter);
+        await expectRevert(votingInstance.addVoter(_voter),
+                           "Already registered");
+      });
+
+      it("Should register one voter", async function () {
+        await votingInstance.addVoter(_voter);
+        const voter  = await votingInstance.getVoter(_voter, {from: _voter});
+        expect(voter.isRegistered.toString()).to.equal("true");
+      });
+
+      it("Should register two voters", async function () {
+        await votingInstance.addVoter(_voter);
+        await votingInstance.addVoter(_otherVoter);
+        const voter  = await votingInstance.getVoter(_otherVoter, {from: _voter});
+        expect(voter.isRegistered.toString()).to.equal("true");
+      });
+
+    });
+
+    describe("Events", function () {
+      it("Should emit an event: \"VoterRegistered\"", async function () {
+        expectEvent(await votingInstance.addVoter(_voter),
+                    'VoterRegistered',
+                    {voterAddress: _voter});
+      });
+    });
+  });
+
+  describe("AddProposal", function () {
+    describe("Validations", function () {
+      it("Should revert with right error if called not form a voter", async function () {
+        await votingInstance.addVoter(_voter);
+        await expectRevert(votingInstance.addProposal("", {from: _owner}),
+                           "You're not a voter");
+      });
+
+      // The only way to change workFlowStatus value... (Mock will be helpful)
+      describe("State", async function () {
+        it("Should revert with right error if called from \"RegisteringVoters\"", async function () {
+          await votingInstance.addVoter(_voter);
+          await expectRevert(votingInstance.addProposal("", {from: _voter}),
+                             "Proposals are not allowed yet");
+        });
+        
+        it("Should revert with right error if called from \"ProposalsRegistrationEnded\"", async function () {
+          await votingInstance.addVoter(_voter);
+          await votingInstance.startProposalsRegistering();
+          await votingInstance.endProposalsRegistering();
+          await expectRevert(votingInstance.addProposal("", {from: _voter}),
+                             "Proposals are not allowed yet");
+        });
+
+        it("Should revert with right error if called from \"VotingSessionStarted\"", async function () {
+          await votingInstance.addVoter(_voter);
+          await votingInstance.startProposalsRegistering();
+          await votingInstance.endProposalsRegistering();
+          await votingInstance.startVotingSession();
+          await expectRevert(votingInstance.addProposal("", {from: _voter}),
+                             "Proposals are not allowed yet");
+        });
+
+        it("Should revert with right error if called from \"VotingSessionEnded\"", async function () {
+          await votingInstance.addVoter(_voter);
+          await votingInstance.startProposalsRegistering();
+          await votingInstance.endProposalsRegistering();
+          await votingInstance.startVotingSession();
+          await votingInstance.endVotingSession();
+          await expectRevert(votingInstance.addProposal("", {from: _voter}),
+                             "Proposals are not allowed yet");
+        });
+        
+        it("Should revert with right error if called from \"VotesTallied\"", async function () {
+          await votingInstance.addVoter(_voter);
+          await votingInstance.startProposalsRegistering();
+          await votingInstance.endProposalsRegistering();
+          await votingInstance.startVotingSession();
+          await votingInstance.endVotingSession();
+          await votingInstance.tallyVotes();
+          await expectRevert(votingInstance.addProposal("", {from: _voter}),
+                             "Proposals are not allowed yet");
+        });
+      });
+
+      it("Should revert with right error if the description is empty", async function () {
+        await votingInstance.addVoter(_voter);
+        await votingInstance.startProposalsRegistering();
+        await expectRevert(votingInstance.addProposal("", {from: _voter}),
+                           "Vous ne pouvez pas ne rien proposer");
+      });
+
+      it("Should add one proposal", async function () {
+        await votingInstance.addVoter(_voter);
+        await votingInstance.startProposalsRegistering();
+        const expected = "Foo";
+        await votingInstance.addProposal(expected, {from: _voter})
+        const proposal  = await votingInstance.getOneProposal(new BN(1), {from: _voter});
+        expect(proposal.description.toString()).to.equal(expected);
+      });
+
+      it("Should add two proposals", async function () {
+        await votingInstance.addVoter(_voter);
+        await votingInstance.startProposalsRegistering();
+        await votingInstance.addProposal("Foo", {from: _voter})
+        const expected = "Bar";
+        await votingInstance.addProposal(expected, {from: _voter})
+        const proposal  = await votingInstance.getOneProposal(new BN(2), {from: _voter});
+        expect(proposal.description.toString()).to.equal(expected);
+      });
+    });
+    
+    describe("Events", function () {
+      it("Should emit an event: \"ProposalRegistered\"", async function () {
+        await votingInstance.addVoter(_voter);
+        await votingInstance.startProposalsRegistering();
+        expectEvent(await votingInstance.addProposal("Foo", {from: _voter}),
+                    'ProposalRegistered',
+                    {proposalId: new BN(1)});
+      });
+    });
+  });
+
+  describe("setVote", function () {
+    describe("Validations", function () {
+      it("Should revert with right error if called not form a voter", async function () {
+        await votingInstance.addVoter(_voter);
+        await votingInstance.startProposalsRegistering();
+        await votingInstance.endProposalsRegistering();
+        await votingInstance.startVotingSession();
+        await expectRevert(votingInstance.setVote(new BN(1), {from: _owner}),
+                           "You're not a voter");
+      });
+
+      // The only way to change workFlowStatus value... (Mock will be helpful)
+      describe("State", async function () {
+        it("Should revert with right error if called from \"RegisteringVoters\"", async function () {
+          await votingInstance.addVoter(_voter);
+          await expectRevert(votingInstance.setVote(new BN(1), {from: _voter}),
+                             "Voting session havent started yet");
+        });
+
+        it("Should revert with right error if called from \"ProposalsRegistrationStarted\"", async function () {
+          await votingInstance.addVoter(_voter);
+          await votingInstance.startProposalsRegistering();
+          await expectRevert(votingInstance.setVote(new BN(1), {from: _voter}),
+                             "Voting session havent started yet");
+        });
+
+        it("Should revert with right error if called from \"ProposalsRegistrationEnded\"", async function () {
+          await votingInstance.addVoter(_voter);
+          await votingInstance.startProposalsRegistering();
+          await votingInstance.endProposalsRegistering();
+          await expectRevert(votingInstance.setVote(new BN(1), {from: _voter}),
+                             "Voting session havent started yet");
+        });        
+
+        it("Should revert with right error if called from \"VotingSessionEnded\"", async function () {
+          await votingInstance.addVoter(_voter);
+          await votingInstance.startProposalsRegistering();
+          await votingInstance.endProposalsRegistering();
+          await votingInstance.startVotingSession();
+          await votingInstance.endVotingSession();
+          await expectRevert(votingInstance.setVote(new BN(1), {from: _voter}),
+                             "Voting session havent started yet");
+        });
+        
+        it("Should revert with right error if called from \"VotesTallied\"", async function () {
+          await votingInstance.addVoter(_voter);
+          await votingInstance.startProposalsRegistering();
+          await votingInstance.endProposalsRegistering();
+          await votingInstance.startVotingSession();
+          await votingInstance.endVotingSession();
+          await votingInstance.tallyVotes();
+          await expectRevert(votingInstance.setVote(new BN(1), {from: _voter}),
+                             "Voting session havent started yet");
+        });
+      });
+
+      it("Should revert with right error if voter has already vote", async function () {
+        await votingInstance.addVoter(_voter);
+        await votingInstance.startProposalsRegistering();
+        await votingInstance.addProposal("Foo", {from: _voter});
+        await votingInstance.endProposalsRegistering();
+        await votingInstance.startVotingSession();
+        const _proposalId = new BN(1);
+        await votingInstance.setVote(_proposalId, {from: _voter});
+        await expectRevert(votingInstance.setVote(_proposalId, {from: _voter}),
+                           "You have already voted");
+      });
+
+      it("Should revert with right error if voter vote for an inexisting proposal", async function () {
+        await votingInstance.addVoter(_voter);
+        await votingInstance.startProposalsRegistering();
+        await votingInstance.addProposal("Foo", {from: _voter});
+        await votingInstance.endProposalsRegistering();
+        await votingInstance.startVotingSession();
+        const _proposalId = new BN(10)
+        await expectRevert(votingInstance.setVote(_proposalId, {from: _voter}),
+                           "Proposal not found");
+      });
+
+      it("Should set one vote", async function () {
+        await votingInstance.addVoter(_voter);
+        await votingInstance.startProposalsRegistering();
+        await votingInstance.addProposal("Foo", {from: _voter});
+        await votingInstance.endProposalsRegistering();
+        await votingInstance.startVotingSession();
+        const _proposalId = new BN(1);
+        await votingInstance.setVote(_proposalId, {from: _voter});
+        const expectedVoteCount = new BN(1);
+        const proposal  = await votingInstance.getOneProposal(_proposalId, {from: _voter});
+        expect(proposal.voteCount.toString()).to.equal(expectedVoteCount.toString());
+      });
+
+      it("Should set two votes for the same proposal", async function () {
+        await votingInstance.addVoter(_voter);
+        await votingInstance.addVoter(_otherVoter);
+        await votingInstance.startProposalsRegistering();
+        await votingInstance.addProposal("Foo", {from: _voter});
+        await votingInstance.endProposalsRegistering();
+        await votingInstance.startVotingSession();
+        const _proposalId = new BN(1);
+        await votingInstance.setVote(_proposalId, {from: _voter});
+        await votingInstance.setVote(_proposalId, {from: _otherVoter});
+        expectedVoteCount = new BN(2);
+        const proposal  = await votingInstance.getOneProposal(_proposalId, {from: _voter});
+        expect(proposal.voteCount.toString()).to.equal(expectedVoteCount.toString());
+      });
+
+      it("Should set 1 vote for each proposal", async function () {
+        await votingInstance.addVoter(_voter);
+        await votingInstance.addVoter(_otherVoter);
+        await votingInstance.startProposalsRegistering();
+        await votingInstance.addProposal("Foo", {from: _voter});
+        await votingInstance.addProposal("Bar", {from: _voter});
+        await votingInstance.endProposalsRegistering();
+        await votingInstance.startVotingSession();
+        const _proposalId0 = new BN(1);
+        await votingInstance.setVote(_proposalId0, {from: _voter});
+        const proposal0  = await votingInstance.getOneProposal(_proposalId0, {from: _voter});
+        expectedVoteCount0 = new BN(1);
+        expect(proposal0.voteCount.toString()).to.equal(expectedVoteCount0.toString());
+
+        const _proposalId1 = new BN(2);
+        await votingInstance.setVote(_proposalId1, {from: _otherVoter});
+        const proposal1  = await votingInstance.getOneProposal(_proposalId1, {from: _otherVoter});
+        expectedVoteCount1 = new BN(1);
+        expect(proposal1.voteCount.toString()).to.equal(expectedVoteCount1.toString());
+      });
+    });
+    
+    describe("Events", function () {
+      it("Should emit an event: \"Voted\"", async function () {
+        await votingInstance.addVoter(_voter);
+        await votingInstance.startProposalsRegistering();
+        await votingInstance.addProposal("Foo", {from: _voter});
+        await votingInstance.endProposalsRegistering();
+        await votingInstance.startVotingSession();
+        const _proposalId = new BN(1);
+        expectEvent(await votingInstance.setVote(_proposalId, {from: _voter}),
+                    'Voted',
+                    {voter: _voter, proposalId: _proposalId});
+      });
+    });
+  });
+
+  describe("Tally Votes", function () {
+    describe("Validations", function () {
+      it("Should revert with right error if called not form the owner", async function () {
+        await expectRevert(votingInstance.tallyVotes({from: _voter}),
+                           "Ownable: caller is not the owner");
+      });
+
+      describe("State", async function () {
+        it("Should revert with right error if called from \"RegisteringVoters\"", async function () {
+          await expectRevert(votingInstance.tallyVotes(),
+                             "Current status is not voting session ended");
+        });
+
+        it("Should revert with right error if called from \"ProposalsRegistrationStarted\"", async function () {
+          await votingInstance.startProposalsRegistering();
+          await expectRevert(votingInstance.tallyVotes(),
+                             "Current status is not voting session ended");
+        });
+
+        it("Should revert with right error if called from \"ProposalsRegistrationEnded\"", async function () {
+          await votingInstance.startProposalsRegistering();
+          await votingInstance.endProposalsRegistering();
+          await expectRevert(votingInstance.tallyVotes(),
+                             "Current status is not voting session ended");
+        });
+
+        it("Should revert with right error if called from \"VotingSessionStarted\"", async function () {
+          await votingInstance.startProposalsRegistering();
+          await votingInstance.endProposalsRegistering();
+          await votingInstance.startVotingSession();
+          await expectRevert(votingInstance.addVoter(_voter),
+                             "Voters registration is not open yet");
+        });
+
+        it("Should revert with right error if called from \"VotesTallied\"", async function () {
+          await votingInstance.startProposalsRegistering();
+          await votingInstance.endProposalsRegistering();
+          await votingInstance.startVotingSession();
+          await votingInstance.endVotingSession();
+          await votingInstance.tallyVotes();
+          await expectRevert(votingInstance.tallyVotes(),
+                             "Current status is not voting session ended");
+        });
+      });
+    });
+
+    it("Should winning proposalId equal 1", async function () {
+      await votingInstance.addVoter(_voter);
+      await votingInstance.startProposalsRegistering();
+      await votingInstance.addProposal("Foo", {from: _voter});
+      await votingInstance.endProposalsRegistering();
+      await votingInstance.startVotingSession();
+      const _proposalId = new BN(1);
+      await votingInstance.setVote(_proposalId, {from: _voter});
+      await votingInstance.endVotingSession();
+      await votingInstance.tallyVotes();
+      
+      const expected = _proposalId;
+      const actual = await votingInstance.winningProposalID();
+      expect(actual.toString()).to.equal(expected.toString());
+    });
+
+    it("Should winning proposalId equal 2", async function () {
+      await votingInstance.addVoter(_voter);
+      await votingInstance.addVoter(_otherVoter);
+      await votingInstance.startProposalsRegistering();
+      await votingInstance.addProposal("Foo", {from: _voter});
+      await votingInstance.addProposal("Bar", {from: _voter});
+      await votingInstance.endProposalsRegistering();
+      await votingInstance.startVotingSession();
+      const _proposalId0 = new BN(1);
+      const _proposalId1 = new BN(2);
+      await votingInstance.setVote(_proposalId1, {from: _voter});
+      await votingInstance.setVote(_proposalId1, {from: _otherVoter});
+      await votingInstance.endVotingSession();
+      await votingInstance.tallyVotes();
+
+      const expected = _proposalId1;
+      const actual = await votingInstance.winningProposalID();
+      expect(actual.toString()).to.equal(expected.toString());
+    });
+
+    it("Should winning proposalId equal 1 even if there is a draw", async function () {
+      await votingInstance.addVoter(_voter);
+      await votingInstance.addVoter(_otherVoter);
+      await votingInstance.startProposalsRegistering();
+      await votingInstance.addProposal("Foo", {from: _voter});
+      await votingInstance.addProposal("Bar", {from: _voter});
+      await votingInstance.endProposalsRegistering();
+      await votingInstance.startVotingSession();
+      const _proposalId0 = new BN(1);
+      const _proposalId1 = new BN(2);
+      await votingInstance.setVote(_proposalId0, {from: _voter});
+      await votingInstance.setVote(_proposalId1, {from: _otherVoter});
+      await votingInstance.endVotingSession();
+      await votingInstance.tallyVotes();
+
+      const expected = _proposalId0;
+      const actual = await votingInstance.winningProposalID();
+      expect(actual.toString()).to.equal(expected.toString());
+    });
+
+    describe("Events", function () {
+      it("Should emit an event: \"WorkflowStatusChange\"", async function () {
+        await votingInstance.startProposalsRegistering();
+        await votingInstance.endProposalsRegistering();
+        await votingInstance.startVotingSession();
+        await votingInstance.endVotingSession();
+        expectEvent(await votingInstance.tallyVotes(),
+                    'WorkflowStatusChange',
+                    {previousStatus: new BN(4), newStatus: new BN(5)});
+      });
+    });
   });
   
 });
