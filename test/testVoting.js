@@ -25,14 +25,12 @@ contract("Voting", accounts => {
     describe("Initalization", function () {
       it("Should init workflowstatus to RegisteringVoters", async function () {
         const workflowStatus = await votingInstance.workflowStatus();
-        const expected = new BN(0);
-        expect(workflowStatus.toString()).to.equal(expected.toString());
+        expect(workflowStatus).to.be.bignumber.equal('0');
       });
 
       it("Should init winningProposalId to 0", async function () {
         const winningProposalID = await votingInstance.winningProposalID();
-        const expected = new BN(0);
-        expect(winningProposalID.toString()).to.equal(expected.toString());
+        expect(winningProposalID).to.be.bignumber.equal('0');
       });
     });
   });
@@ -40,8 +38,8 @@ contract("Voting", accounts => {
   describe("Getters access", function () {
     describe("Get Voter", async function () {
       it("Should revert with right error if not called from a voter", async function () {
-        await expectRevert(votingInstance.getVoter(_owner, {from: _owner}),
-                           "You're not a voter");
+           await expectRevert(votingInstance.getVoter(_owner, {from: _owner}),
+                              "You're not a voter");
       });
     });
 
@@ -313,9 +311,8 @@ contract("Voting", accounts => {
         await votingInstance.startVotingSession();
         const _proposalId = new BN(1);
         await votingInstance.setVote(_proposalId, {from: _voter});
-        const expectedVoteCount = new BN(1);
         const proposal  = await votingInstance.getOneProposal(_proposalId, {from: _voter});
-        expect(proposal.voteCount.toString()).to.equal(expectedVoteCount.toString());
+        expect(proposal.voteCount).to.be.bignumber.equal('1');
       });
 
       it("Should set two votes for the same proposal", async function () {
@@ -328,9 +325,8 @@ contract("Voting", accounts => {
         const _proposalId = new BN(1);
         await votingInstance.setVote(_proposalId, {from: _voter});
         await votingInstance.setVote(_proposalId, {from: _otherVoter});
-        expectedVoteCount = new BN(2);
         const proposal  = await votingInstance.getOneProposal(_proposalId, {from: _voter});
-        expect(proposal.voteCount.toString()).to.equal(expectedVoteCount.toString());
+        expect(proposal.voteCount).to.be.bignumber.equal('2');
       });
 
       it("Should set 1 vote for each proposal", async function () {
@@ -342,16 +338,13 @@ contract("Voting", accounts => {
         await votingInstance.endProposalsRegistering();
         await votingInstance.startVotingSession();
         const _proposalId0 = new BN(1);
-        await votingInstance.setVote(_proposalId0, {from: _voter});
-        const proposal0  = await votingInstance.getOneProposal(_proposalId0, {from: _voter});
-        expectedVoteCount0 = new BN(1);
-        expect(proposal0.voteCount.toString()).to.equal(expectedVoteCount0.toString());
-
         const _proposalId1 = new BN(2);
+        await votingInstance.setVote(_proposalId0, {from: _voter});
         await votingInstance.setVote(_proposalId1, {from: _otherVoter});
+        const proposal0  = await votingInstance.getOneProposal(_proposalId0, {from: _voter});
         const proposal1  = await votingInstance.getOneProposal(_proposalId1, {from: _otherVoter});
-        expectedVoteCount1 = new BN(1);
-        expect(proposal1.voteCount.toString()).to.equal(expectedVoteCount1.toString());
+        expect(proposal0.voteCount).to.be.bignumber.equal('1');
+        expect(proposal1.voteCount).to.be.bignumber.equal('1');
       });
     });
     
@@ -679,7 +672,7 @@ contract("Voting", accounts => {
       
       const expected = _proposalId;
       const actual = await votingInstance.winningProposalID();
-      expect(actual.toString()).to.equal(expected.toString());
+      expect(actual).to.be.bignumber.equal(expected);
     });
 
     it("Should winning proposalId equal 2", async function () {
@@ -690,7 +683,6 @@ contract("Voting", accounts => {
       await votingInstance.addProposal("Bar", {from: _voter});
       await votingInstance.endProposalsRegistering();
       await votingInstance.startVotingSession();
-      const _proposalId0 = new BN(1);
       const _proposalId1 = new BN(2);
       await votingInstance.setVote(_proposalId1, {from: _voter});
       await votingInstance.setVote(_proposalId1, {from: _otherVoter});
@@ -699,7 +691,7 @@ contract("Voting", accounts => {
 
       const expected = _proposalId1;
       const actual = await votingInstance.winningProposalID();
-      expect(actual.toString()).to.equal(expected.toString());
+      expect(actual).to.be.bignumber.equal(expected);
     });
 
     it("Should winning proposalId equal 1 even if there is a draw", async function () {
@@ -719,7 +711,7 @@ contract("Voting", accounts => {
 
       const expected = _proposalId0;
       const actual = await votingInstance.winningProposalID();
-      expect(actual.toString()).to.equal(expected.toString());
+      expect(actual).to.be.bignumber.equal(expected);
     });
 
     describe("Events", function () {
