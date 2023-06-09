@@ -31,51 +31,20 @@ truffle test
 
 ### Description des tests
 
-Il y a 76 tests unitaires.
-Chaque fonction "public/external" est testé séparemment en suivant un template simple:
-* description de la fonction testé
+Il y a 44 tests unitaires.
+Chaque fonction "public/external" est testé séparément en suivant un template simple:
+* description de la fonction testé avec son contexte associé ("beforeEach")
 * Une sous-section "Validation":
   * Check des requires
-  * Check du "state"
-  * Check de ces valeurs de retour ou modification de variables global
+  * Check de ces valeurs de retour ou modification de variables globales
 * Une sous-section "Events"
   * Check des events
-
-### Gas Report
-
-
-|  Solc version: 0.8.13+commit.abaa5c0e     |  Optimizer enabled: false  |  Runs: 200  |  Block limit: 6718946 gas  │
-|-------------------------------------------|----------------------------|-------------|----------------------------|
-
-
-|  Contract   |  Method                     |  Min         |  Max        |  Avg        |  # calls     |  eur (avg)  │
-|-------------|-----------------------------|--------------|-------------|-------------|--------------|-------------|
-|  Voting     |   addProposal               |              |             |       59004 |           19 |             │
-|             |                             |              |             |             |              |             | 
-|  Voting     |   addVoter                  |              |             |       50220 |           42 |             │
-|             |                             |              |             |             |              |             | 
-|  Voting     |  endProposalsRegistering    |              |             |       30599 |           50 |             │
-|             |                             |              |             |             |              |             | 
-|  Voting     |  endVotingSession           |              |             |       30533 |           28 |             │
-|             |                             |              |             |             |              |             | 
-|  Voting     |  setVote                    |        60913 |       78013 |       74995 |           17 |             │
-|             |                             |              |             |             |              |             | 
-|  Voting     |  startProposalsRegistering  |              |             |       94840 |           63 |             │
-|             |                             |              |             |             |              |             | 
-|  Voting     |  startVotingSession         |              |             |       30554 |           43 |             │
-|             |                             |              |             |             |              |             | 
-|  Voting     |  tallyVotes                 |        37849 |       63565 |       44305 |           23 |             │
-|             |                             |              |             |             |              |             | 
-|  Deployments|                             |              |             |             |   % of limit |             │
-|             |                             |              |             |             |              |             | 
-|  Voting     |                             |              |             |     1970595 |       29.3 % |             │
-
+  
+Note: Un fichier VotingMock.sol a été rajouté pour permettre de tester plus simplement les requires de workflowStatus.
 
 ### Code-Coverage
 
-Le coverage a été testé depuis HardHat.
-Grace à hardhat-truffle5 le code coverage à pu être réalisé.
-
+Le coverage a été testé depuis HardHat. Utilisation de hardhat-truffle5.
 
 |File         |  % Stmts | % Branch |  % Funcs |  % Lines |Uncovered Lines |
 |-------------|----------|----------|----------|----------|----------------|
